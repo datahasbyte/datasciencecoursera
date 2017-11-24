@@ -1,0 +1,70 @@
+---
+title: "The Impact of Storms"
+author: "Adam Chmielewski"
+date: "November 24, 2017"
+output: html_document
+---
+
+## Synopsis
+There are significant economic and health impacts from weather storms. The analysis of the NOAA storm database data shows that there impacts of injuries, fatalities, and crop damage. The impact depends on storm type. Tornados were found to cause the most injuries AND fatalities. When measuring impact of crop damage, Hail was found to cause the greatest impact on crops.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Processing
+
+The data was downloaded from the course website <https://www.coursera.org/learn/reproducible-research/peer/OMZ37/course-project-2>. It was downloaded and loaded from this bz2 file.
+
+```{r read_data, cache=TRUE}
+storm_data <- read.csv('repdata%2Fdata%2FStormData.csv.bz2')
+```
+
+```{r dates, cache=TRUE}
+# clean dates
+storm_data$BGN_DATE <- as.Date(as.factor(storm_data$BGN_DATE), format = "%m/%d/%Y")
+storm_data$END_DATE <- as.Date(as.factor(storm_data$END_DATE), format = "%m/%d/%Y")
+```
+
+```{r transform}
+# transform data
+library(dplyr)
+library(ggplot2)
+evtype_impact <- storm_data %>% group_by(EVTYPE) %>% summarize(injury_count=sum(INJURIES), fatality_count=sum(FATALITIES), crop_damage=sum(CROPDMG))
+
+# rank by injuries
+evtype_injury <- evtype_impact %>% mutate(ranking = rank(desc(injury_count)))
+evtype_injury <- evtype_injury[order(evtype_injury$ranking),]
+top_5_injury <- evtype_injury %>% filter(ranking <= 5)
+
+# rank by fatalities
+evtype_fatality <- evtype_impact %>% mutate(ranking = rank(desc(fatality_count)))
+evtype_fatality<- evtype_fatality[order(evtype_fatality$ranking),]
+top_5_fatality <- evtype_fatality %>% filter(ranking <= 5)
+
+# rank by crop damage
+evtype_crop <- evtype_impact %>% mutate(ranking = rank(desc(crop_damage)))
+evtype_crop <- evtype_crop[order(evtype_crop$ranking),]
+top_5_crop_damage <- evtype_crop %>% filter(ranking <= 5)
+
+```
+
+## Results
+
+```{r plots}
+
+# plot injuries
+p <- ggplot(data=top_5_injury, aes(x=reorder(EVTYPE, -injury_count), y=injury_count)) + geom_bar(stat='identity', aes(fill=-injury_count))
+p <- p + labs(title="Which Storm Type causes the greatest number of injuries?", x="Storm Type", y="Injury Count") + guides(fill = guide_legend(title="# injuries"))
+print(p)
+
+# plot fatalities
+q <- ggplot(data=top_5_fatality, aes(x=reorder(EVTYPE, -fatality_count), y=fatality_count)) + geom_bar(stat='identity', aes(fill=-fatality_count))
+q <- q + labs(title="Which Storm Type causes the greatest number of fatalities?", x="Storm Type", y="Fatality Count") + guides(fill = guide_legend(title="# fatalities"))
+print(q)
+
+# plot crop damage
+r <- ggplot(data=top_5_crop_damage, aes(x=reorder(EVTYPE, -crop_damage), y=crop_damage)) + geom_bar(stat='identity', aes(fill=-crop_damage))
+r <- r + labs(title="Which Storm Type causes the greatest amount of damage to crops?", x="Storm Type", y="Crop Damage") + guides(fill = guide_legend(title="crop damage"))
+print(r)
+```
